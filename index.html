@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cadastro Aberto</title>
+  <meta name="description" content="Consulta gratuita de CNPJ com dados públicos da Receita Federal: situação cadastral, endereço com mapa, sócios, atividades e exportação.">
+  <meta name="author" content="Renan Henrique Carneiro">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B5D4B'/%3E%3Cpath d='M9 11h14M9 16h9M9 21h11' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./" aria-label="Cadastro Aberto, início">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Cadastro Aberto</span>
+      </a>
+      <span class="brand-tag">Consulta de CNPJ com dados públicos</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="search" aria-labelledby="search-title">
+      <h1 id="search-title">Consulte qualquer empresa pelo CNPJ</h1>
+      <p class="lede">Situação cadastral, endereço com mapa, sócios e atividades, direto da base pública da Receita Federal.</p>
+
+      <form id="form" class="search-form" novalidate>
+        <label for="cnpj" class="sr-only">CNPJ</label>
+        <input id="cnpj" name="cnpj" inputmode="text" autocomplete="off" spellcheck="false"
+               placeholder="00.000.000/0000-00" maxlength="18" aria-describedby="hint">
+        <button type="submit" id="btn-buscar">Consultar</button>
+      </form>
+      <p id="hint" class="hint">Aceita CNPJ numérico e o novo CNPJ alfanumérico. Pode colar com ou sem pontuação.</p>
+
+      <div id="history" class="history" hidden>
+        <span class="history-label">Consultas recentes</span>
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+    <article id="result" class="result" hidden>
+      <header class="company">
+        <div class="company-main">
+          <div class="chips">
+            <span id="r-situacao" class="chip"></span>
+            <span id="r-tipo" class="chip chip-quiet"></span>
+            <span id="r-mei" class="chip chip-quiet" hidden>MEI</span>
+            <span id="r-simples" class="chip chip-quiet" hidden>Simples Nacional</span>
+          </div>
+          <h2 id="r-razao" class="company-name"></h2>
+          <p id="r-fantasia" class="company-alias"></p>
+          <p class="company-cnpj">
+            <span id="r-cnpj" class="mono"></span>
+            <button type="button" class="link-btn" data-copy="cnpj">Copiar</button>
+          </p>
+        </div>
+        <div class="actions" role="group" aria-label="Exportar">
+          <button type="button" id="btn-print" class="btn-ghost">Imprimir cartão</button>
+          <button type="button" id="btn-xlsx" class="btn-ghost">Excel</button>
+          <button type="button" id="btn-csv" class="btn-ghost">CSV</button>
+          <button type="button" id="btn-json" class="btn-ghost">Copiar JSON</button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <section class="panel" aria-labelledby="h-cad">
+          <h3 id="h-cad">Dados cadastrais</h3>
+          <dl id="r-cadastro" class="facts"></dl>
+        </section>
+
+        <section class="panel" aria-labelledby="h-end">
+          <h3 id="h-end">Endereço</h3>
+          <address id="r-endereco" class="address"></address>
+          <div class="map-actions">
+            <a id="r-maps" class="btn-small" target="_blank" rel="noopener">Abrir no Google Maps</a>
+            <a id="r-rota" class="btn-small" target="_blank" rel="noopener">Traçar rota até aqui</a>
+            <button type="button" class="btn-small" data-copy="endereco">Copiar endereço</button>
+          </div>
+          <div class="map-frame">
+            <iframe id="r-mapa" title="Mapa do endereço da empresa" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
+          <h4>Contato</h4>
+          <dl id="r-contato" class="facts facts-compact"></dl>
+        </section>
+
+        <section class="panel panel-wide" aria-labelledby="h-cnae">
+          <h3 id="h-cnae">Atividades econômicas (CNAE)</h3>
+          <div id="r-cnae-principal" class="cnae-main"></div>
+          <details id="r-cnae-sec-wrap">
+            <summary id="r-cnae-sec-title">Atividades secundárias</summary>
+            <ul id="r-cnae-sec" class="cnae-list"></ul>
+          </details>
+        </section>
+
+        <section class="panel panel-wide" aria-labelledby="h-qsa">
+          <h3 id="h-qsa">Quadro de sócios e administradores</h3>
+          <div class="table-wrap">
+            <table class="qsa">
+              <thead><tr><th scope="col">Nome</th><th scope="col">Qualificação</th><th scope="col">Entrada</th><th scope="col">Faixa etária</th></tr></thead>
+              <tbody id="r-qsa"></tbody>
+            </table>
+          </div>
+          <p id="r-qsa-vazio" class="muted" hidden>Nenhum sócio informado na base pública para este CNPJ.</p>
+        </section>
+      </div>
+
+      <p class="source">Fonte: dados abertos do CNPJ (Receita Federal), via <span id="r-fonte"></span>. Consultado em <span id="r-quando"></span>.</p>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span>Cadastro Aberto · projeto de Renan Henrique Carneiro</span>
+      <span class="muted">Dados públicos, conforme a Lei de Acesso à Informação. Informações de pessoas físicas são exibidas apenas como constam na base aberta.</span>
+    </div>
+  </footer>
+
+  <!-- Cartão para impressão (preenchido via JS) -->
+  <section id="print-card" class="print-card" aria-hidden="true"></section>
+
+  <script src="assets/vendor/xlsx.full.min.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</body>
+</html>
