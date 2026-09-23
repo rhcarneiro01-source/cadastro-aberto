@@ -210,3 +210,40 @@ details summary { cursor: pointer; font-weight: 600; padding: 6px 0; color: var(
   .pc-qsa { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9.5pt; }
   .pc-qsa th, .pc-qsa td { border: .5px solid #000; padding: 4px 6px; text-align: left; }
 }
+
+/* ---------- modos (única / lote) ---------- */
+.modes { display: inline-flex; gap: 4px; padding: 4px; margin-top: 28px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
+.modes button { border: 0; background: transparent; color: var(--ink-2); font: 600 14px/1 var(--font); padding: 10px 16px; border-radius: 9px; cursor: pointer; }
+.modes button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.modes + div .search, #modo-lote .search { padding-top: 22px; }
+
+/* ---------- lote ---------- */
+.lote-entrada { display: flex; flex-direction: column; gap: 10px; }
+.lote-label { font-size: 13.5px; color: var(--ink-2); }
+.lote-entrada textarea {
+  width: 100%; min-height: 150px; resize: vertical; padding: 12px 14px;
+  font: 400 15px/1.5 var(--mono); color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: var(--radius);
+}
+.lote-entrada textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.lote-arquivo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.lote-arquivo label { cursor: pointer; }
+.lote-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-primary { font: 600 15px/1 var(--font); padding: 13px 20px; border: 0; border-radius: var(--radius); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.lote-painel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; margin-bottom: 40px; }
+.lote-topo { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+.lote-topo > div:first-child { flex: 1 1 360px; min-width: 0; }
+.lote-progresso-txt { font-weight: 600; margin-bottom: 8px; }
+.barra { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.barra span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
+.lote-contagem { margin: 12px 0 0; }
+.lote-tabela td { white-space: nowrap; }
+.lote-tabela td:nth-child(3), .lote-tabela td:nth-child(6) { white-space: normal; min-width: 200px; }
+.lote-tabela td:first-child { color: var(--ink-3); font-weight: 400; }
+.lote-tabela tbody tr.ok { cursor: pointer; }
+.lote-tabela tbody tr.ok:hover { background: var(--surface-2); }
+.lote-tabela tbody tr.pendente td { color: var(--ink-3); }
+.lote-tabela .erro { color: var(--bad); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .barra span { transition: none; } }
+@media print { .modes, #modo-lote { display: none !important; } }

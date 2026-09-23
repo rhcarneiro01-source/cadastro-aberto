@@ -24,6 +24,12 @@
   </header>
 
   <main class="wrap">
+    <nav class="modes" role="tablist" aria-label="Tipo de consulta">
+      <button type="button" role="tab" id="tab-unica" aria-selected="true" aria-controls="modo-unica">Um CNPJ</button>
+      <button type="button" role="tab" id="tab-lote" aria-selected="false" aria-controls="modo-lote">Vários CNPJs (lote)</button>
+    </nav>
+
+    <div id="modo-unica" role="tabpanel" aria-labelledby="tab-unica">
     <section class="search" aria-labelledby="search-title">
       <h1 id="search-title">Consulte qualquer empresa pelo CNPJ</h1>
       <p class="lede">Situação cadastral, endereço com mapa, sócios e atividades, direto da base pública da Receita Federal.</p>
@@ -112,6 +118,51 @@
 
       <p class="source">Fonte: dados abertos do CNPJ (Receita Federal), via <span id="r-fonte"></span>. Consultado em <span id="r-quando"></span>.</p>
     </article>
+    </div>
+
+    <div id="modo-lote" role="tabpanel" aria-labelledby="tab-lote" hidden>
+      <section class="search" aria-labelledby="lote-title">
+        <h1 id="lote-title">Consulte uma lista de CNPJs de uma vez</h1>
+        <p class="lede">Cole os CNPJs ou importe uma planilha. O site consulta um por um e monta uma tabela para exportar em Excel.</p>
+
+        <div class="lote-entrada">
+          <label for="lote-texto" class="lote-label">Cole os CNPJs (um por linha, ou separados por vírgula, espaço ou ponto e vírgula)</label>
+          <textarea id="lote-texto" rows="7" spellcheck="false" placeholder="11.222.333/0001-81&#10;02542939000103&#10;..."></textarea>
+          <div class="lote-arquivo">
+            <label for="lote-file" class="btn-small">Importar Excel, CSV ou TXT</label>
+            <input type="file" id="lote-file" accept=".xlsx,.xls,.csv,.txt" class="sr-only">
+            <span id="lote-file-nome" class="muted"></span>
+          </div>
+          <p id="lote-resumo" class="hint">Nenhum CNPJ identificado ainda.</p>
+          <div class="lote-botoes">
+            <button type="button" id="lote-iniciar" class="btn-primary" disabled>Consultar lista</button>
+            <button type="button" id="lote-pausar" class="btn-ghost" hidden>Pausar</button>
+            <button type="button" id="lote-cancelar" class="btn-ghost" hidden>Cancelar</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="lote-painel" class="lote-painel" hidden aria-live="polite">
+        <div class="lote-topo">
+          <div>
+            <div id="lote-progresso-txt" class="lote-progresso-txt"></div>
+            <div class="barra" aria-hidden="true"><span id="lote-barra"></span></div>
+            <div id="lote-contagem" class="chips lote-contagem"></div>
+          </div>
+          <div class="actions" role="group" aria-label="Exportar lote">
+            <button type="button" id="lote-xlsx" class="btn-ghost" disabled>Excel</button>
+            <button type="button" id="lote-csv" class="btn-ghost" disabled>CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="qsa lote-tabela">
+            <thead><tr><th scope="col">#</th><th scope="col">CNPJ</th><th scope="col">Razão social</th><th scope="col">Situação</th><th scope="col">Cidade/UF</th><th scope="col">Atividade principal</th><th scope="col">Telefone</th></tr></thead>
+            <tbody id="lote-linhas"></tbody>
+          </table>
+        </div>
+        <p class="hint">Clique numa linha para ver a ficha completa da empresa.</p>
+      </section>
+    </div>
   </main>
 
   <footer class="footer">

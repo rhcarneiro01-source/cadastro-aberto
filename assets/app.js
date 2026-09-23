@@ -442,11 +442,241 @@
   $("btn-print").addEventListener("click", () => atual && imprimir(atual));
   $("btn-json").addEventListener("click", () => atual && copiar(JSON.stringify(atual, null, 2), "JSON"));
 
+  // ---------------------------------------------------------------- abas
+  function mudarModo(modo) {
+    const lote = modo === "lote";
+    $("tab-unica").setAttribute("aria-selected", String(!lote));
+    $("tab-lote").setAttribute("aria-selected", String(lote));
+    $("modo-unica").hidden = lote;
+    $("modo-lote").hidden = !lote;
+    (lote ? $("lote-texto") : input).focus();
+  }
+  $("tab-unica").addEventListener("click", () => mudarModo("unica"));
+  $("tab-lote").addEventListener("click", () => mudarModo("lote"));
+
+  // ---------------------------------------------------------------- consulta em lote
+  const LOTE_MAX = 1000;
+  const LOTE_PAUSA_MS = 400;        // intervalo entre consultas, para respeitar as APIs públicas
+  const LOTE_ESPERA_LIMITE_MS = 20000;
+  const lote = { fila: [], resultados: [], rodando: false, pausado: false, cancelado: false, invalidos: 0, repetidos: 0 };
+
+  /** Extrai CNPJs de qualquer texto (lista colada, CSV, conteúdo de planilha). */
+  function extrairCnpjs(texto) {
+    const t = String(texto || "").toUpperCase();
+    const re = /(?<![0-9A-Z])([0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}|[0-9A-Z]{12}\d{2}|\d{13})(?![0-9A-Z])/g;
+    const vistos = new Set(), validos = [];
+    let invalidos = 0, repetidos = 0, m;
+    while ((m = re.exec(t))) {
+      let c = limpar(m[1]);
+      if (/^\d{13}$/.test(c)) c = "0" + c; // planilha que perdeu o zero à esquerda
+      if (!valido(c)) { if (/^\d{8}/.test(c) || /[.\/-]/.test(m[1])) invalidos++; continue; }
+      if (vistos.has(c)) { repetidos++; continue; }
+      vistos.add(c); validos.push(c);
+    }
+    return { validos, invalidos, repetidos };
+  }
+
+  function atualizarResumoEntrada() {
+    const r = extrairCnpjs($("lote-texto").value);
+    lote.fila = r.validos.slice(0, LOTE_MAX);
+    lote.invalidos = r.invalidos; lote.repetidos = r.repetidos;
+    const partes = [];
+    partes.push(r.validos.length === 1 ? "1 CNPJ válido" : `${r.validos.length} CNPJs válidos`);
+    if (r.repetidos) partes.push(`${r.repetidos} repetido${r.repetidos > 1 ? "s" : ""} ignorado${r.repetidos > 1 ? "s" : ""}`);
+    if (r.invalidos) partes.push(`${r.invalidos} com dígito inválido`);
+    if (r.validos.length > LOTE_MAX) partes.push(`só os primeiros ${LOTE_MAX} serão consultados`);
+    const seg = Math.ceil(lote.fila.length * (LOTE_PAUSA_MS + 600) / 1000);
+    if (lote.fila.length > 1) partes.push(`tempo estimado: ${seg < 60 ? seg + " s" : Math.ceil(seg / 60) + " min"}`);
+    $("lote-resumo").textContent = r.validos.length || r.invalidos ? partes.join(" · ") : "Nenhum CNPJ identificado ainda.";
+    $("lote-iniciar").disabled = lote.rodando || lote.fila.length === 0;
+  }
+
+  $("lote-texto").addEventListener("input", atualizarResumoEntrada);
+
+  $("lote-file").addEventListener("change", async (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    $("lote-file-nome").textContent = f.name;
+    try {
+      let texto;
+      if (/\.xlsx?$/i.test(f.name)) {
+        if (!window.XLSX) throw new Error("biblioteca do Excel não carregou");
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        // valores brutos: evita que o Excel transforme CNPJ numérico em notação científica
+        texto = wb.SheetNames.map((n) => XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" })
+          .map((linha) => linha.map((v) => (typeof v === "number" ? v.toFixed(0) : String(v))).join(";")).join("\n")).join("\n");
+      } else {
+        texto = await f.text();
+      }
+      const achados = extrairCnpjs(texto).validos;
+      const atual = $("lote-texto").value.trim();
+      $("lote-texto").value = (atual ? atual + "\n" : "") + achados.map(mascarar).join("\n");
+      atualizarResumoEntrada();
+      toast(achados.length ? `${achados.length} CNPJs encontrados no arquivo` : "Nenhum CNPJ válido encontrado no arquivo");
+    } catch (e) {
+      toast(`Não foi possível ler o arquivo: ${e.message}`);
+    } finally { ev.target.value = ""; }
+  });
+
+  const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function aguardarSePausado() { while (lote.pausado && !lote.cancelado) await dormir(250); }
+
+  function linhaPendente(i, c) {
+    const tr = el("tr", { class: "pendente", "data-i": String(i) },
+      el("td", {}, String(i + 1)), el("td", { class: "mono" }, mascarar(c)), el("td", {}, "Na fila…"),
+      el("td", {}, ""), el("td", {}, ""), el("td", {}, ""), el("td", {}, ""));
+    return tr;
+  }
+  function preencherLinha(i) {
+    const r = lote.resultados[i];
+    const tr = $("lote-linhas").querySelector(`tr[data-i="${i}"]`);
+    if (!tr) return;
+    if (r.dados) {
+      const d = r.dados;
+      const sit = el("span", { class: "chip " + classeSituacao(d.situacao || "") }, d.situacao || "—");
+      tr.className = "ok";
+      tr.title = "Ver ficha completa";
+      tr.replaceChildren(
+        el("td", {}, String(i + 1)), el("td", { class: "mono" }, mascarar(d.cnpj)), el("td", {}, d.razao),
+        el("td", {}, sit), el("td", {}, [titulo(d.end.municipio), d.end.uf].filter(Boolean).join("/")),
+        el("td", {}, [d.cnaePrincipal.codigo, d.cnaePrincipal.descricao].filter(Boolean).join(" ")),
+        el("td", {}, d.telefones[0] || ""));
+    } else {
+      tr.className = "falha";
+      tr.children[2].replaceChildren(el("span", { class: "erro" }, r.erro));
+    }
+  }
+
+  function atualizarProgresso() {
+    const total = lote.resultados.length;
+    const feitos = lote.resultados.filter((r) => r.dados || r.erro).length;
+    const pct = total ? Math.round((feitos / total) * 100) : 0;
+    $("lote-barra").style.width = pct + "%";
+    let txt = `${feitos} de ${total} consultados (${pct}%)`;
+    if (lote.cancelado) txt += " · cancelado";
+    else if (lote.pausado) txt += " · pausado";
+    else if (!lote.rodando && feitos === total) txt = `Concluído: ${total} CNPJ${total > 1 ? "s" : ""} consultado${total > 1 ? "s" : ""}`;
+    $("lote-progresso-txt").textContent = txt;
+
+    const cont = {};
+    for (const r of lote.resultados) {
+      const k = r.dados ? (r.dados.situacao || "Sem situação") : r.erro ? "Não encontrado / erro" : null;
+      if (k) cont[k] = (cont[k] || 0) + 1;
+    }
+    $("lote-contagem").replaceChildren(...Object.entries(cont).map(([k, n]) =>
+      el("span", { class: "chip " + (k.startsWith("Não encontrado") ? "bad" : classeSituacao(k)) }, `${k}: ${n}`)));
+    const tem = lote.resultados.some((r) => r.dados || r.erro);
+    $("lote-xlsx").disabled = !tem; $("lote-csv").disabled = !tem;
+  }
+
+  async function iniciarLote() {
+    if (lote.rodando || !lote.fila.length) return;
+    lote.rodando = true; lote.pausado = false; lote.cancelado = false;
+    lote.resultados = lote.fila.map((c) => ({ cnpj: c, dados: null, erro: null }));
+    $("lote-linhas").replaceChildren(...lote.fila.map((c, i) => linhaPendente(i, c)));
+    $("lote-painel").hidden = false;
+    $("lote-iniciar").disabled = true; $("lote-texto").disabled = true;
+    $("lote-pausar").hidden = false; $("lote-cancelar").hidden = false; $("lote-pausar").textContent = "Pausar";
+    atualizarProgresso();
+
+    for (let i = 0; i < lote.resultados.length; i++) {
+      await aguardarSePausado();
+      if (lote.cancelado) break;
+      const r = lote.resultados[i];
+      for (let tentativa = 0; tentativa < 3; tentativa++) {
+        try {
+          r.dados = await consultar(r.cnpj);
+          r.dados.consultadoEm = new Date();
+          r.erro = null;
+          break;
+        } catch (e) {
+          r.erro = e.message || "Erro na consulta";
+          if (e.definitivo || tentativa === 2 || lote.cancelado) break;
+          $("lote-progresso-txt").textContent = "Limite das APIs atingido. Aguardando para continuar…";
+          await dormir(LOTE_ESPERA_LIMITE_MS);
+        }
+      }
+      preencherLinha(i);
+      atualizarProgresso();
+      if (i < lote.resultados.length - 1) await dormir(LOTE_PAUSA_MS);
+    }
+
+    lote.rodando = false;
+    $("lote-texto").disabled = false;
+    $("lote-pausar").hidden = true; $("lote-cancelar").hidden = true;
+    atualizarResumoEntrada();
+    atualizarProgresso();
+    toast(lote.cancelado ? "Consulta em lote cancelada" : "Consulta em lote concluída");
+  }
+
+  $("lote-iniciar").addEventListener("click", iniciarLote);
+  $("lote-pausar").addEventListener("click", () => {
+    lote.pausado = !lote.pausado;
+    $("lote-pausar").textContent = lote.pausado ? "Continuar" : "Pausar";
+    atualizarProgresso();
+  });
+  $("lote-cancelar").addEventListener("click", () => { lote.cancelado = true; lote.pausado = false; atualizarProgresso(); });
+
+  $("lote-linhas").addEventListener("click", (ev) => {
+    const tr = ev.target.closest("tr.ok");
+    if (!tr) return;
+    const d = lote.resultados[+tr.dataset.i].dados;
+    atual = d;
+    renderizar(d);
+    esconderStatus();
+    input.value = mascarar(d.cnpj);
+    mudarModo("unica");
+    $("result").scrollIntoView({ block: "start" });
+  });
+
+  function tabelaLote() {
+    const ok = lote.resultados.filter((r) => r.dados);
+    const cab = ["Status", ...linhasEmpresa(ok[0] ? ok[0].dados : { ...modeloVazio(), consultadoEm: new Date() }).map((l) => l[0])];
+    const linhas = lote.resultados.filter((r) => r.dados || r.erro).map((r) =>
+      r.dados ? ["OK", ...linhasEmpresa(r.dados).map((l) => l[1])]
+              : [r.erro, mascarar(r.cnpj), ...Array(cab.length - 2).fill("")]);
+    return [cab, ...linhas];
+  }
+  function modeloVazio() {
+    return { cnpj: "", razao: "", fantasia: "", situacao: "", dataSituacao: "", motivoSituacao: "", tipo: "", abertura: "", natureza: "", porte: "",
+      capital: null, simples: null, mei: null, end: { tipoLogr: "", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "" },
+      telefones: [], email: "", cnaePrincipal: { codigo: "", descricao: "" }, cnaesSec: [], socios: [], fonte: "" };
+  }
+  const carimbo = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+
+  $("lote-xlsx").addEventListener("click", () => {
+    if (!window.XLSX) { toast("Biblioteca do Excel ainda carregando. Tente em instantes."); return; }
+    const wb = XLSX.utils.book_new();
+    const emp = XLSX.utils.aoa_to_sheet(tabelaLote());
+    emp["!cols"] = [{ wch: 14 }, { wch: 20 }, { wch: 42 }, { wch: 28 }, { wch: 12 }];
+    emp["!autofilter"] = { ref: emp["!ref"] };
+    XLSX.utils.book_append_sheet(wb, emp, "Empresas");
+    const socios = [["CNPJ", "Razão social", "Sócio / administrador", "Qualificação", "Entrada", "Faixa etária"]];
+    for (const r of lote.resultados) if (r.dados) for (const s of r.dados.socios)
+      socios.push([mascarar(r.dados.cnpj), r.dados.razao, s.nome, s.qualificacao, s.entrada, s.faixa]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(socios), "Sócios");
+    const cnaes = [["CNPJ", "Razão social", "Tipo", "Código", "Descrição"]];
+    for (const r of lote.resultados) if (r.dados) {
+      cnaes.push([mascarar(r.dados.cnpj), r.dados.razao, "Principal", r.dados.cnaePrincipal.codigo, r.dados.cnaePrincipal.descricao]);
+      for (const c of r.dados.cnaesSec) cnaes.push([mascarar(r.dados.cnpj), r.dados.razao, "Secundária", c.codigo, c.descricao]);
+    }
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cnaes), "CNAEs");
+    XLSX.writeFile(wb, `Consulta_CNPJ_lote_${carimbo()}.xlsx`);
+    toast("Planilha do lote gerada");
+  });
+  $("lote-csv").addEventListener("click", () => {
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = tabelaLote().map((l) => l.map(esc).join(";")).join("\r\n");
+    baixar(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), `Consulta_CNPJ_lote_${carimbo()}.csv`);
+    toast("CSV do lote gerado");
+  });
+
   // ---------------------------------------------------------------- início
   desenharHistorico();
   const inicial = new URLSearchParams(location.search).get("cnpj");
-  if (inicial) executar(inicial); else input.focus();
+  if (location.hash === "#lote") mudarModo("lote");
+  else if (inicial) executar(inicial); else input.focus();
 
   // exposto para testes
-  window.CadastroAberto = { valido, limpar, mascarar, deBrasilAPI, deCnpjWs, cnae };
+  window.CadastroAberto = { valido, limpar, mascarar, deBrasilAPI, deCnpjWs, cnae, extrairCnpjs };
 })();
