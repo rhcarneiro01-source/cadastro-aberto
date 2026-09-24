@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/styles.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -30,8 +30,8 @@
 
   <main class="wrap">
     <nav class="modes" role="tablist" aria-label="Tipo de consulta">
-      <button type="button" role="tab" id="tab-unica" aria-selected="true" aria-controls="modo-unica"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Um CNPJ</button>
-      <button type="button" role="tab" id="tab-lote" aria-selected="false" aria-controls="modo-lote"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Vários CNPJs <span class="tab-badge">Lote</span></button>
+      <button type="button" role="tab" id="tab-unica" aria-selected="true" aria-controls="modo-unica"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Um CNPJ</button>
+      <button type="button" role="tab" id="tab-lote" aria-selected="false" aria-controls="modo-lote"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Vários CNPJs <span class="tab-badge">Lote</span></button>
     </nav>
 
     <div id="modo-unica" role="tabpanel" aria-labelledby="tab-unica">
@@ -42,13 +42,13 @@
       <form id="form" class="search-form" novalidate>
         <label for="cnpj" class="sr-only">CNPJ</label>
         <div class="search-field">
-        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="cnpj" name="cnpj" inputmode="text" autocomplete="off" spellcheck="false"
                placeholder="00.000.000/0000-00" maxlength="18" aria-describedby="hint">
         </div>
-        <button type="submit" id="btn-buscar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Consultar</span></button>
+        <button type="submit" id="btn-buscar"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Consultar</span></button>
       </form>
-      <p id="hint" class="hints"><span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Com ou sem pontuação</span><span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aceita o novo CNPJ alfanumérico</span><span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Gratuito e sem cadastro</span></p>
+      <p id="hint" class="hints"><span><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Com ou sem pontuação</span><span><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aceita o novo CNPJ alfanumérico</span><span><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Gratuito e sem cadastro</span></p>
 
       <div id="history" class="history" hidden>
         <span class="history-label">Recentes</span>
@@ -63,38 +63,38 @@
       </div>
       <div class="feat-grid">
         <div class="feat">
-          <div class="feat-ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></div>
+          <div class="feat-ic"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></div>
           <h3>Dados da empresa</h3>
           <p>Razão social, nome fantasia e situação cadastral com cor.</p>
           <ul><li>Situação</li><li>Porte</li><li>Capital social</li><li>Simples/MEI</li></ul>
         </div>
         <div class="feat">
-          <div class="feat-ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div class="feat-ic"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
           <h3>Endereço e contato</h3>
           <p>Endereço completo com mapa, rota até o local e telefones.</p>
           <ul><li>Mapa</li><li>Rota</li><li>Telefone</li><li>E-mail</li></ul>
         </div>
         <div class="feat">
-          <div class="feat-ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="feat-ic"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <h3>Sócios</h3>
           <p>Quadro de sócios e administradores com qualificação.</p>
           <ul><li>Nome</li><li>Qualificação</li><li>Entrada</li><li>Faixa etária</li></ul>
         </div>
         <div class="feat">
-          <div class="feat-ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/></svg></div>
+          <div class="feat-ic"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/></svg></div>
           <h3>Atividades (CNAE)</h3>
           <p>Atividade principal e todas as secundárias, com código.</p>
           <ul><li>Principal</li><li>Secundárias</li><li>Natureza jurídica</li></ul>
         </div>
       </div>
       <div class="lote-cta">
-        <div class="feat-ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg></div>
+        <div class="feat-ic"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg></div>
         <div class="lote-cta-txt">
           <h3>Precisa consultar vários CNPJs?</h3>
           <p>Cole uma lista ou importe uma planilha e baixe tudo num Excel só.</p>
         </div>
         <div class="lote-cta-fmt" aria-label="Formatos aceitos"><span>Excel</span><span>CSV</span><span>TXT</span></div>
-        <button type="button" id="ir-lote">Consulta em lote <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button type="button" id="ir-lote">Consulta em lote <svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       </div>
     </section>
 
@@ -179,13 +179,13 @@
           <label for="lote-texto" class="lote-label">Cole os CNPJs (um por linha, ou separados por vírgula, espaço ou ponto e vírgula)</label>
           <textarea id="lote-texto" rows="7" spellcheck="false" placeholder="11.222.333/0001-81&#10;02542939000103&#10;..."></textarea>
           <div class="lote-arquivo">
-            <label for="lote-file" class="btn-small"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Importar Excel, CSV ou TXT</label>
+            <label for="lote-file" class="btn-small"><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Importar Excel, CSV ou TXT</label>
             <input type="file" id="lote-file" accept=".xlsx,.xls,.csv,.txt" class="sr-only">
             <span id="lote-file-nome" class="muted"></span>
           </div>
           <p id="lote-resumo" class="hint">Nenhum CNPJ identificado ainda.</p>
           <div class="lote-botoes">
-            <button type="button" id="lote-iniciar" class="btn-primary" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Consultar lista</button>
+            <button type="button" id="lote-iniciar" class="btn-primary" disabled><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Consultar lista</button>
             <button type="button" id="lote-pausar" class="btn-ghost" hidden>Pausar</button>
             <button type="button" id="lote-cancelar" class="btn-ghost" hidden>Cancelar</button>
           </div>
@@ -218,7 +218,7 @@
   <footer class="footer">
     <div class="wrap footer-inner">
       <span><b>Cadastro Aberto</b> · projeto de Renan Henrique Carneiro</span>
-      <span class="footer-note" title="Informações de pessoas físicas são exibidas apenas como constam na base aberta."><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Dados públicos da Receita Federal (LAI) · sem vínculo com órgãos do governo</span>
+      <span class="footer-note" title="Informações de pessoas físicas são exibidas apenas como constam na base aberta."><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Dados públicos da Receita Federal (LAI) · sem vínculo com órgãos do governo</span>
     </div>
   </footer>
 
@@ -226,6 +226,6 @@
   <section id="print-card" class="print-card" aria-hidden="true"></section>
 
   <script src="assets/vendor/xlsx.full.min.js" defer></script>
-  <script src="assets/app.js" defer></script>
+  <script src="assets/app.js?v=2" defer></script>
 </body>
 </html>
