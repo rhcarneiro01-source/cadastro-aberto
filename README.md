@@ -16,7 +16,8 @@ Digite ou cole um CNPJ e veja:
 - **Atividades (CNAE):** a principal e todas as secundárias, com o código formatado.
 - **Quadro de sócios e administradores (QSA):** nome, qualificação, data de entrada e faixa etária.
 - **Exportação:** Excel com 3 abas (Empresa, CNAEs e Sócios), CSV no padrão do Excel brasileiro (separador `;` e acentos corretos), cartão A4 para imprimir ou salvar em PDF e JSON copiado.
-- **Consulta em lote:** cole uma lista de CNPJs ou importe um Excel, CSV ou TXT, e o site consulta todos, um por vez. Mostra o andamento, permite pausar ou cancelar, conta quantas empresas estão ativas, baixadas ou não encontradas, e exporta tudo num Excel com as abas Empresas, Sócios e CNAEs. Clicando numa linha, abre a ficha completa da empresa. Link direto: `…/cadastro-aberto/#lote`.
+- **Consulta em lote:** cole uma lista de CNPJs ou importe um Excel, CSV ou TXT, e o site consulta todos, um por vez. Mostra o andamento, permite pausar ou cancelar, conta quantas empresas estão ativas, baixadas ou não encontradas, e exporta tudo num Excel com as abas Empresas, Sócios e CNAEs. Clicando numa linha, abre a ficha completa da empresa.
+- **Análise do lote:** painel que se atualiza durante a consulta, com indicadores (ativas, empresas que pedem atenção, tempo mediano de empresa e capital social mediano) e gráficos por situação cadastral, tempo de empresa, UF, porte, cidade e atividade principal. Clicando numa barra, a tabela é filtrada por aquela categoria. O Excel do lote ganha a aba **Resumo** com todas essas contagens. Link direto: `…/cadastro-aberto/#lote`.
 - **Extras:** histórico das últimas consultas (fica só no navegador), link direto pelo endereço `?cnpj=00000000000000` e validação dos dígitos antes de consultar. O **novo CNPJ alfanumérico** (em vigor desde julho de 2026) também é aceito.
 
 ## Como rodar
@@ -55,6 +56,7 @@ assets/vendor/xlsx...    SheetJS, para gerar o .xlsx sem depender de CDN
 
 ## Próximos passos possíveis
 
+- Sinais de atenção por empresa (sócios em comum entre fornecedores, empresa recém-aberta, mesmo endereço para várias empresas).
 - Distância e tempo de rota a partir de uma base, para roteirização.
 - Busca por nome da empresa, que exige outra fonte de dados.
 

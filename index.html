@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="assets/styles.css?v=2">
+  <link rel="stylesheet" href="assets/styles.css?v=3">
 </head>
 <body>
   <header class="topbar">
@@ -204,6 +204,15 @@
             <button type="button" id="lote-csv" class="btn-ghost" disabled>CSV</button>
           </div>
         </div>
+        <section id="lote-analise" class="analise" aria-labelledby="analise-title" hidden>
+          <div class="analise-head">
+            <h2 id="analise-title">Análise do lote</h2>
+            <p class="muted">Clique numa barra para filtrar a tabela abaixo.</p>
+          </div>
+          <div id="analise-kpis" class="kpis"></div>
+          <div id="analise-graficos" class="graficos"></div>
+        </section>
+        <div id="lote-filtro" class="lote-filtro" hidden></div>
         <div class="table-wrap">
           <table class="qsa lote-tabela">
             <thead><tr><th scope="col">#</th><th scope="col">CNPJ</th><th scope="col">Razão social</th><th scope="col">Situação</th><th scope="col">Cidade/UF</th><th scope="col">Atividade principal</th><th scope="col">Telefone</th></tr></thead>
@@ -226,6 +235,6 @@
   <section id="print-card" class="print-card" aria-hidden="true"></section>
 
   <script src="assets/vendor/xlsx.full.min.js" defer></script>
-  <script src="assets/app.js?v=2" defer></script>
+  <script src="assets/app.js?v=3" defer></script>
 </body>
 </html>
