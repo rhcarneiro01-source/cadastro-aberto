@@ -568,12 +568,206 @@
       el("span", { class: "chip " + (k.startsWith("Não encontrado") ? "bad" : classeSituacao(k)) }, `${k}: ${n}`)));
     const tem = lote.resultados.some((r) => r.dados || r.erro);
     $("lote-xlsx").disabled = !tem; $("lote-csv").disabled = !tem;
+    agendarAnalise();
+  }
+  // redesenha o painel no máximo uma vez por quadro, mesmo com muitas atualizações seguidas
+  let analiseAgendada = false;
+  function agendarAnalise() {
+    if (analiseAgendada) return;
+    analiseAgendada = true;
+    requestAnimationFrame(() => { analiseAgendada = false; desenharAnalise(); });
+  }
+
+  // ---------------------------------------------------------------- análise do lote (painel)
+  const FAIXAS_IDADE = ["Menos de 1 ano", "1 a 2 anos", "3 a 5 anos", "6 a 10 anos", "11 a 20 anos", "Mais de 20 anos"];
+  const NAO_ENCONTRADO = "Não encontrado";
+
+  function anosDeEmpresa(v) {
+    const m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const ini = new Date(+m[1], +m[2] - 1, +m[3]), hoje = new Date();
+    let anos = hoje.getFullYear() - ini.getFullYear();
+    if (hoje < new Date(hoje.getFullYear(), ini.getMonth(), ini.getDate())) anos--;
+    return Math.max(0, anos);
+  }
+  function faixaIdade(anos) {
+    if (anos === null) return null;
+    return anos < 1 ? FAIXAS_IDADE[0] : anos <= 2 ? FAIXAS_IDADE[1] : anos <= 5 ? FAIXAS_IDADE[2]
+      : anos <= 10 ? FAIXAS_IDADE[3] : anos <= 20 ? FAIXAS_IDADE[4] : FAIXAS_IDADE[5];
+  }
+  function porteCurto(d) {
+    if (d.mei === true) return "MEI";
+    const p = (d.porte || "").toLowerCase();
+    if (p.includes("micro")) return "Microempresa (ME)";
+    if (p.includes("pequeno")) return "Pequeno porte (EPP)";
+    if (p.includes("demais")) return "Demais (médio/grande)";
+    return p ? titulo(d.porte) : "Não informado";
+  }
+  function mediana(nums) {
+    const v = nums.filter((n) => typeof n === "number" && isFinite(n)).sort((a, b) => a - b);
+    if (!v.length) return null;
+    const m = Math.floor(v.length / 2);
+    return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+  }
+
+  /** Dimensões do painel. `valor` devolve a categoria de um resultado (null = fica fora do gráfico). */
+  const DIMENSOES = [
+    { id: "situacao", titulo: "Situação cadastral", status: true,
+      valor: (r) => (r.dados ? titulo(r.dados.situacao || "Sem situação") : r.erro ? NAO_ENCONTRADO : null) },
+    { id: "idade", titulo: "Tempo de empresa", ordem: FAIXAS_IDADE,
+      valor: (r) => (r.dados ? faixaIdade(anosDeEmpresa(r.dados.abertura)) : null) },
+    { id: "uf", titulo: "Empresas por UF", top: 8,
+      valor: (r) => (r.dados ? r.dados.end.uf || "Sem UF" : null) },
+    { id: "porte", titulo: "Porte", valor: (r) => (r.dados ? porteCurto(r.dados) : null) },
+    { id: "cidade", titulo: "Principais cidades", top: 8, largo: true,
+      valor: (r) => (r.dados ? [titulo(r.dados.end.municipio), r.dados.end.uf].filter(Boolean).join("/") || "Sem cidade" : null) },
+    { id: "cnae", titulo: "Atividade principal", top: 8, largo: true,
+      valor: (r) => (r.dados ? r.dados.cnaePrincipal.descricao || "Sem atividade" : null) },
+  ];
+  const OUTRAS = "Outras";
+
+  /** Conta as categorias de uma dimensão, aplica ordem fixa ou top N (o resto vira "Outras"). */
+  function agregar(dim, resultados) {
+    const cont = new Map();
+    for (const r of resultados) {
+      const k = dim.valor(r);
+      if (k !== null && k !== undefined) cont.set(k, (cont.get(k) || 0) + 1);
+    }
+    let itens = [...cont].map(([rotulo, n]) => ({ rotulo, n }));
+    if (dim.ordem) {
+      itens = dim.ordem.map((rotulo) => ({ rotulo, n: cont.get(rotulo) || 0 }));
+    } else {
+      itens.sort((a, b) => b.n - a.n || a.rotulo.localeCompare(b.rotulo, "pt-BR"));
+      if (dim.top && itens.length > dim.top) {
+        const resto = itens.slice(dim.top - 1);
+        itens = itens.slice(0, dim.top - 1);
+        itens.push({ rotulo: OUTRAS, n: resto.reduce((s, x) => s + x.n, 0), membros: new Set(resto.map((x) => x.rotulo)), qtd: resto.length });
+      }
+    }
+    const total = itens.reduce((s, x) => s + x.n, 0);
+    return { itens, total };
+  }
+
+  // filtro ativo da tabela: { dim, rotulo, membros? }
+  lote.filtro = null;
+  const agregados = new Map();
+
+  function combinaFiltro(r) {
+    const f = lote.filtro;
+    if (!f) return true;
+    const dim = DIMENSOES.find((d) => d.id === f.dim);
+    const k = dim.valor(r);
+    return f.membros ? f.membros.has(k) : k === f.rotulo;
+  }
+  function aplicarFiltro() {
+    const f = lote.filtro, box = $("lote-filtro");
+    let visiveis = 0;
+    $("lote-linhas").querySelectorAll("tr[data-i]").forEach((tr) => {
+      const ok = combinaFiltro(lote.resultados[+tr.dataset.i]);
+      tr.hidden = !ok; if (ok) visiveis++;
+    });
+    box.hidden = !f;
+    if (f) {
+      const dim = DIMENSOES.find((d) => d.id === f.dim);
+      const limpar = el("button", { type: "button", class: "link-btn" }, "Limpar filtro");
+      limpar.addEventListener("click", () => { lote.filtro = null; aplicarFiltro(); desenharAnalise(); });
+      box.replaceChildren(el("span", {}, `Filtro: ${dim.titulo} = `, el("b", {}, f.rotulo), ` · ${visiveis} empresa${visiveis === 1 ? "" : "s"}`), limpar);
+    }
+  }
+
+  // tooltip único, reaproveitado por todas as barras
+  const tip = el("div", { class: "chart-tip", role: "tooltip" });
+  tip.hidden = true;
+  document.body.append(tip);
+  function mostrarTip(ev, titulo, linha) {
+    tip.replaceChildren(el("b", {}, titulo), el("span", {}, linha));
+    tip.hidden = false;
+    const x = Math.min(ev.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+    tip.style.left = x + "px";
+    tip.style.top = (ev.clientY + 16) + "px";
+  }
+
+  function kpi(rotulo, valor, detalhe, classe) {
+    return el("div", { class: "kpi" + (classe ? " " + classe : "") },
+      el("span", { class: "kpi-rotulo" }, rotulo), el("strong", { class: "kpi-valor" }, valor), el("span", { class: "kpi-det" }, detalhe || ""));
+  }
+
+  const pct = (n, t) => (t ? Math.round((n / t) * 100) : 0);
+  const brlCurto = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
+
+  function desenharAnalise() {
+    const feitos = lote.resultados.filter((r) => r.dados || r.erro);
+    const secao = $("lote-analise");
+    secao.hidden = feitos.length === 0;
+    if (!feitos.length) return;
+    const ok = feitos.filter((r) => r.dados);
+
+    // indicadores
+    const ativas = ok.filter((r) => classeSituacao(r.dados.situacao || "") === "ok").length;
+    const atencao = feitos.length - ativas;
+    const idadeMed = mediana(ok.map((r) => anosDeEmpresa(r.dados.abertura)));
+    const capMed = mediana(ok.map((r) => r.dados.capital));
+    $("analise-kpis").replaceChildren(
+      kpi("Consultados", String(feitos.length), `de ${lote.resultados.length} na lista`),
+      kpi("Ativas", String(ativas), `${pct(ativas, feitos.length)}% do lote`, "kpi-ok"),
+      kpi("Pedem atenção", String(atencao), atencao ? `${pct(atencao, feitos.length)}%: não ativas ou não encontradas` : "nenhuma", atencao ? "kpi-warn" : ""),
+      kpi("Tempo mediano", idadeMed === null ? "—" : `${idadeMed.toLocaleString("pt-BR")} ${idadeMed === 1 ? "ano" : "anos"}`, "desde a abertura"),
+      kpi("Capital social mediano", capMed === null ? "—" : brlCurto.format(capMed), "metade está acima, metade abaixo"),
+    );
+
+    // gráficos de barras horizontais
+    const graficos = DIMENSOES.map((dim) => {
+      const ag = agregar(dim, feitos);
+      agregados.set(dim.id, ag);
+      const max = Math.max(1, ...ag.itens.map((x) => x.n));
+      const lista = el("ul", { class: "barras" });
+      for (const it of ag.itens) {
+        const ativo = lote.filtro && lote.filtro.dim === dim.id && lote.filtro.rotulo === it.rotulo;
+        const esmaecido = lote.filtro && lote.filtro.dim === dim.id && !ativo;
+        const cor = dim.status ? (it.rotulo === NAO_ENCONTRADO ? "neutro" : classeSituacao(it.rotulo) || "neutro") : "";
+        const nome = it.rotulo === OUTRAS && it.qtd ? `${OUTRAS} (${it.qtd})` : it.rotulo;
+        const btn = el("button", {
+          type: "button", class: "barra-item" + (ativo ? " ativo" : "") + (esmaecido ? " esmaecido" : ""),
+          "aria-pressed": String(!!ativo), "aria-label": `${nome}: ${it.n} empresas, ${pct(it.n, ag.total)}%. Filtrar tabela`,
+        },
+          el("span", { class: "barra-rotulo" }, nome),
+          el("span", { class: "barra-trilho" }, el("span", { class: "barra-fill " + cor, style: `width:${it.n ? Math.max(2, (it.n / max) * 100) : 0}%` })),
+          el("span", { class: "barra-valor" }, String(it.n), el("small", {}, ` ${pct(it.n, ag.total)}%`)));
+        btn.disabled = it.n === 0;
+        btn.addEventListener("mousemove", (ev) => mostrarTip(ev, nome, `${it.n} empresa${it.n === 1 ? "" : "s"} · ${pct(it.n, ag.total)}% do gráfico`));
+        btn.addEventListener("mouseleave", () => { tip.hidden = true; });
+        btn.addEventListener("click", () => {
+          lote.filtro = ativo ? null : { dim: dim.id, rotulo: it.rotulo, membros: it.membros };
+          tip.hidden = true;
+          aplicarFiltro(); desenharAnalise();
+        });
+        lista.append(el("li", {}, btn));
+      }
+      return el("section", { class: "grafico" + (dim.largo ? " largo" : "") + (dim.id === "cnae" ? " rotulo-longo" : "") },
+        el("h3", {}, dim.titulo, el("span", { class: "muted" }, ` · ${ag.total}`)), lista);
+    });
+    $("analise-graficos").replaceChildren(...graficos);
+  }
+
+  /** Linhas da aba "Resumo" do Excel: indicadores e todas as contagens do painel. */
+  function resumoLote() {
+    desenharAnalise();
+    const feitos = lote.resultados.filter((r) => r.dados || r.erro);
+    const linhas = [["Resumo da consulta em lote", ""], ["Gerado em", new Date().toLocaleString("pt-BR")], ["CNPJs consultados", feitos.length], []];
+    for (const dim of DIMENSOES) {
+      const ag = agregar(dim, feitos);
+      linhas.push([dim.titulo, "Empresas", "%"]);
+      for (const it of ag.itens) linhas.push([it.rotulo, it.n, ag.total ? +(it.n / ag.total * 100).toFixed(1) : 0]);
+      linhas.push([]);
+    }
+    return linhas;
   }
 
   async function iniciarLote() {
     if (lote.rodando || !lote.fila.length) return;
     lote.rodando = true; lote.pausado = false; lote.cancelado = false;
     lote.resultados = lote.fila.map((c) => ({ cnpj: c, dados: null, erro: null }));
+    lote.filtro = null; $("lote-filtro").hidden = true;
     $("lote-linhas").replaceChildren(...lote.fila.map((c, i) => linhaPendente(i, c)));
     $("lote-painel").hidden = false;
     $("lote-iniciar").disabled = true; $("lote-texto").disabled = true;
@@ -598,6 +792,7 @@
         }
       }
       preencherLinha(i);
+      if (lote.filtro) aplicarFiltro();
       atualizarProgresso();
       if (i < lote.resultados.length - 1) await dormir(LOTE_PAUSA_MS);
     }
@@ -652,6 +847,9 @@
     emp["!cols"] = [{ wch: 14 }, { wch: 20 }, { wch: 42 }, { wch: 28 }, { wch: 12 }];
     emp["!autofilter"] = { ref: emp["!ref"] };
     XLSX.utils.book_append_sheet(wb, emp, "Empresas");
+    const resumo = XLSX.utils.aoa_to_sheet(resumoLote());
+    resumo["!cols"] = [{ wch: 48 }, { wch: 10 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
     const socios = [["CNPJ", "Razão social", "Sócio / administrador", "Qualificação", "Entrada", "Faixa etária"]];
     for (const r of lote.resultados) if (r.dados) for (const s of r.dados.socios)
       socios.push([mascarar(r.dados.cnpj), r.dados.razao, s.nome, s.qualificacao, s.entrada, s.faixa]);
@@ -679,5 +877,5 @@
   else if (inicial) executar(inicial); else input.focus();
 
   // exposto para testes
-  window.CadastroAberto = { valido, limpar, mascarar, deBrasilAPI, deCnpjWs, cnae, extrairCnpjs };
+  window.CadastroAberto = { valido, limpar, mascarar, deBrasilAPI, deCnpjWs, cnae, extrairCnpjs, agregar, DIMENSOES, faixaIdade, anosDeEmpresa, mediana };
 })();
