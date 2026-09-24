@@ -453,6 +453,7 @@
   }
   $("tab-unica").addEventListener("click", () => mudarModo("unica"));
   $("tab-lote").addEventListener("click", () => mudarModo("lote"));
+  $("ir-lote").addEventListener("click", () => { mudarModo("lote"); window.scrollTo({ top: 0, behavior: "smooth" }); });
 
   // ---------------------------------------------------------------- consulta em lote
   const LOTE_MAX = 1000;
