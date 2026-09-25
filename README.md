@@ -17,7 +17,8 @@ Digite ou cole um CNPJ e veja:
 - **Quadro de sócios e administradores (QSA):** nome, qualificação, data de entrada e faixa etária.
 - **Exportação:** Excel com 3 abas (Empresa, CNAEs e Sócios), CSV no padrão do Excel brasileiro (separador `;` e acentos corretos), cartão A4 para imprimir ou salvar em PDF e JSON copiado.
 - **Consulta em lote:** cole uma lista de CNPJs ou importe um Excel, CSV ou TXT, e o site consulta todos, um por vez. Mostra o andamento, permite pausar ou cancelar, conta quantas empresas estão ativas, baixadas ou não encontradas, e exporta tudo num Excel com as abas Empresas, Sócios e CNAEs. Clicando numa linha, abre a ficha completa da empresa.
-- **Análise do lote:** painel que se atualiza durante a consulta, com indicadores (ativas, empresas que pedem atenção, tempo mediano de empresa e capital social mediano) e gráficos por situação cadastral, tempo de empresa, UF, porte, cidade e atividade principal. Clicando numa barra, a tabela é filtrada por aquela categoria. O Excel do lote ganha a aba **Resumo** com todas essas contagens. Link direto: `…/cadastro-aberto/#lote`.
+- **Análise do lote:** painel que se atualiza durante a consulta, com indicadores (ativas, empresas que pedem atenção, tempo mediano de empresa e capital social mediano) e gráficos por situação cadastral, tempo de empresa, UF, porte, cidade e atividade principal. Clicando numa barra, a tabela é filtrada por aquela categoria.
+- **Excel do lote com dashboard:** a planilha abre numa aba **Dashboard** com indicadores e gráficos de barras (situação, tempo de empresa, UF, porte, cidades e atividades). Tudo é calculado por fórmulas sobre a aba **Empresas**, então editar ou excluir linhas lá atualiza o Dashboard. A aba Empresas vem com filtro, cabeçalho congelado, datas e valores formatados e cores por situação. Também traz as abas Sócios, CNAEs e Sobre (fonte e como ler os números). Link direto: `…/cadastro-aberto/#lote`.
 - **Extras:** histórico das últimas consultas (fica só no navegador), link direto pelo endereço `?cnpj=00000000000000` e validação dos dígitos antes de consultar. O **novo CNPJ alfanumérico** (em vigor desde julho de 2026) também é aceito.
 
 ## Como rodar
@@ -51,7 +52,9 @@ Para acrescentar outra API, inclua um item em `PROVEDORES`, no início de `asset
 index.html               página
 assets/styles.css        visual (tema claro e escuro automático, layout para celular, estilo de impressão)
 assets/app.js            validação, consulta, normalização, exibição e exportação
-assets/vendor/xlsx...    SheetJS, para gerar o .xlsx sem depender de CDN
+assets/planilha-lote.js  planilha do lote com dashboard (ExcelJS)
+assets/vendor/xlsx...    SheetJS, para ler planilhas importadas e gerar o Excel de um CNPJ
+assets/vendor/exceljs... ExcelJS, carregado só quando a planilha do lote é gerada
 ```
 
 ## Próximos passos possíveis

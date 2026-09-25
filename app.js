@@ -749,19 +749,6 @@
     $("analise-graficos").replaceChildren(...graficos);
   }
 
-  /** Linhas da aba "Resumo" do Excel: indicadores e todas as contagens do painel. */
-  function resumoLote() {
-    desenharAnalise();
-    const feitos = lote.resultados.filter((r) => r.dados || r.erro);
-    const linhas = [["Resumo da consulta em lote", ""], ["Gerado em", new Date().toLocaleString("pt-BR")], ["CNPJs consultados", feitos.length], []];
-    for (const dim of DIMENSOES) {
-      const ag = agregar(dim, feitos);
-      linhas.push([dim.titulo, "Empresas", "%"]);
-      for (const it of ag.itens) linhas.push([it.rotulo, it.n, ag.total ? +(it.n / ag.total * 100).toFixed(1) : 0]);
-      linhas.push([]);
-    }
-    return linhas;
-  }
 
   async function iniciarLote() {
     if (lote.rodando || !lote.fila.length) return;
@@ -840,28 +827,36 @@
   }
   const carimbo = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
 
-  $("lote-xlsx").addEventListener("click", () => {
-    if (!window.XLSX) { toast("Biblioteca do Excel ainda carregando. Tente em instantes."); return; }
-    const wb = XLSX.utils.book_new();
-    const emp = XLSX.utils.aoa_to_sheet(tabelaLote());
-    emp["!cols"] = [{ wch: 14 }, { wch: 20 }, { wch: 42 }, { wch: 28 }, { wch: 12 }];
-    emp["!autofilter"] = { ref: emp["!ref"] };
-    XLSX.utils.book_append_sheet(wb, emp, "Empresas");
-    const resumo = XLSX.utils.aoa_to_sheet(resumoLote());
-    resumo["!cols"] = [{ wch: 48 }, { wch: 10 }, { wch: 8 }];
-    XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
-    const socios = [["CNPJ", "Razão social", "Sócio / administrador", "Qualificação", "Entrada", "Faixa etária"]];
-    for (const r of lote.resultados) if (r.dados) for (const s of r.dados.socios)
-      socios.push([mascarar(r.dados.cnpj), r.dados.razao, s.nome, s.qualificacao, s.entrada, s.faixa]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(socios), "Sócios");
-    const cnaes = [["CNPJ", "Razão social", "Tipo", "Código", "Descrição"]];
-    for (const r of lote.resultados) if (r.dados) {
-      cnaes.push([mascarar(r.dados.cnpj), r.dados.razao, "Principal", r.dados.cnaePrincipal.codigo, r.dados.cnaePrincipal.descricao]);
-      for (const c of r.dados.cnaesSec) cnaes.push([mascarar(r.dados.cnpj), r.dados.razao, "Secundária", c.codigo, c.descricao]);
+  // ExcelJS (≈900 KB) só é baixado quando alguém pede a planilha do lote
+  let excelJsPromessa = null;
+  function carregarExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    excelJsPromessa ??= new Promise((ok, falha) => {
+      const s = el("script", { src: "assets/vendor/exceljs.min.js?v=4" });
+      s.onload = () => (window.ExcelJS ? ok(window.ExcelJS) : falha(new Error("ExcelJS não carregou")));
+      s.onerror = () => { excelJsPromessa = null; falha(new Error("não foi possível baixar o gerador de planilhas")); };
+      document.head.append(s);
+    });
+    return excelJsPromessa;
+  }
+
+  $("lote-xlsx").addEventListener("click", async () => {
+    const b = $("lote-xlsx");
+    if (b.disabled) return;
+    const rotulo = b.textContent;
+    b.disabled = true; b.textContent = "Gerando…";
+    try {
+      const ExcelJS = await carregarExcelJS();
+      const blob = await window.CadastroPlanilha.gerarPlanilhaLote(ExcelJS, lote.resultados, {
+        mascarar, titulo, agregar, DIMENSOES, faixaIdade, anosDeEmpresa, porteCurto, mediana, classeSituacao, NAO_ENCONTRADO, OUTRAS,
+      });
+      baixar(blob, `Consulta_CNPJ_lote_${carimbo()}.xlsx`);
+      toast("Planilha com dashboard gerada");
+    } catch (e) {
+      toast(`Não foi possível gerar a planilha: ${e.message}`);
+    } finally {
+      b.textContent = rotulo; b.disabled = false;
     }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cnaes), "CNAEs");
-    XLSX.writeFile(wb, `Consulta_CNPJ_lote_${carimbo()}.xlsx`);
-    toast("Planilha do lote gerada");
   });
   $("lote-csv").addEventListener("click", () => {
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
