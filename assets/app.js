@@ -827,16 +827,28 @@
   }
   const carimbo = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
 
-  // ExcelJS (≈900 KB) só é baixado quando alguém pede a planilha do lote
+  // ExcelJS (≈900 KB) só é baixado quando alguém pede a planilha do lote.
+  // Tenta a cópia do próprio site e, se ela não existir, a versão oficial no CDN jsDelivr.
+  const EXCELJS_FONTES = ["assets/vendor/exceljs.min.js?v=5", "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"];
   let excelJsPromessa = null;
-  function carregarExcelJS() {
-    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
-    excelJsPromessa ??= new Promise((ok, falha) => {
-      const s = el("script", { src: "assets/vendor/exceljs.min.js?v=4" });
+  function carregarScript(src) {
+    return new Promise((ok, falha) => {
+      const s = el("script", { src });
       s.onload = () => (window.ExcelJS ? ok(window.ExcelJS) : falha(new Error("ExcelJS não carregou")));
-      s.onerror = () => { excelJsPromessa = null; falha(new Error("não foi possível baixar o gerador de planilhas")); };
+      s.onerror = () => { s.remove(); falha(new Error(`não foi possível baixar ${src}`)); };
       document.head.append(s);
     });
+  }
+  function carregarExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    excelJsPromessa ??= (async () => {
+      let ultimoErro;
+      for (const src of EXCELJS_FONTES) {
+        try { return await carregarScript(src); } catch (e) { ultimoErro = e; console.warn("[Cadastro Aberto]", e.message); }
+      }
+      excelJsPromessa = null;
+      throw new Error("o gerador de planilhas não carregou (verifique a conexão)");
+    })();
     return excelJsPromessa;
   }
 
@@ -847,6 +859,7 @@
     b.disabled = true; b.textContent = "Gerando…";
     try {
       const ExcelJS = await carregarExcelJS();
+      if (!window.CadastroPlanilha) throw new Error("arquivo assets/planilha-lote.js não encontrado");
       const blob = await window.CadastroPlanilha.gerarPlanilhaLote(ExcelJS, lote.resultados, {
         mascarar, titulo, agregar, DIMENSOES, faixaIdade, anosDeEmpresa, porteCurto, mediana, classeSituacao, NAO_ENCONTRADO, OUTRAS,
       });
