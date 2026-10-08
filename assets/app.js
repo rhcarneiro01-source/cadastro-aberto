@@ -120,7 +120,25 @@
         nome: txt(s.nome_socio), qualificacao: txt(s.qualificacao_socio),
         entrada: data(s.data_entrada_sociedade), faixa: txt(s.faixa_etaria),
       })).filter((s) => s.nome),
+      ies: null, // a BrasilAPI não traz inscrição estadual; buscada à parte no CNPJ.ws
     };
+  }
+
+  /** Inscrições estaduais do CNPJ.ws (origem: SINTEGRA/CCC). Habilitadas primeiro. */
+  function inscricoes(lista) {
+    return (Array.isArray(lista) ? lista : []).map((i) => ({
+      ie: txt(i && i.inscricao_estadual),
+      uf: txt(i && i.estado && i.estado.sigla),
+      ativo: i && typeof i.ativo === "boolean" ? i.ativo : null,
+      atualizado: txt(i && i.atualizado_em),
+    })).filter((i) => i.ie).sort((a, b) => (b.ativo === true) - (a.ativo === true) || a.uf.localeCompare(b.uf));
+  }
+  const situacaoIE = (i) => (i.ativo === true ? "Habilitada" : i.ativo === false ? "Não habilitada" : "Situação não informada");
+  /** Texto curto para exportações: "SP 535148490110 (Habilitada) | MG ...". */
+  function textoIEs(ies) {
+    if (ies === null || ies === undefined) return "";
+    if (!ies.length) return "Nenhuma encontrada";
+    return ies.map((i) => `${i.uf} ${i.ie} (${situacaoIE(i)})`).join(" | ");
   }
 
   function deCnpjWs(j) {
@@ -153,6 +171,7 @@
         nome: txt(s.nome), qualificacao: txt(s.qualificacao_socio && s.qualificacao_socio.descricao),
         entrada: data(s.data_entrada), faixa: txt(s.faixa_etaria),
       })).filter((s) => s.nome),
+      ies: inscricoes(e.inscricoes_estaduais),
     };
   }
 
@@ -161,7 +180,17 @@
     constructor(msg, definitivo) { super(msg); this.definitivo = definitivo; }
   }
 
+  // O CNPJ.ws público aceita 3 consultas por minuto: espaça as chamadas em ~20 s.
+  const CNPJWS_INTERVALO_MS = 20500;
+  let cnpjWsLivreEm = 0;
+  async function vezDoCnpjWs() {
+    const espera = cnpjWsLivreEm - Date.now();
+    cnpjWsLivreEm = Math.max(Date.now(), cnpjWsLivreEm) + CNPJWS_INTERVALO_MS;
+    if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+  }
+
   async function buscarEm(p, c) {
+    if (p.nome === "CNPJ.ws") await vezDoCnpjWs();
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
@@ -178,6 +207,15 @@
       if (e instanceof ErroConsulta) throw e;
       throw new ErroConsulta(e.name === "AbortError" ? `O serviço ${p.nome} demorou demais para responder.` : `Não foi possível falar com o serviço ${p.nome}.`, false);
     } finally { clearTimeout(t); }
+  }
+
+  /** Inscrições estaduais de um CNPJ (com cache na sessão). */
+  const cacheIE = new Map();
+  async function buscarIE(c) {
+    if (cacheIE.has(c)) return cacheIE.get(c);
+    const d = await buscarEm(PROVEDORES.find((p) => p.nome === "CNPJ.ws"), c);
+    cacheIE.set(c, d.ies || []);
+    return d.ies || [];
   }
 
   async function consultar(c) {
@@ -206,6 +244,7 @@
       d.consultadoEm = new Date();
       atual = d;
       renderizar(d);
+      carregarIE(d);
       salvarHistorico(d);
       esconderStatus();
       try { history.replaceState(null, "", `?cnpj=${c}`); } catch (_) { /* sem suporte */ }
@@ -310,6 +349,55 @@
     document.title = `${d.razao} · Cadastro Aberto`;
   }
 
+  // ---------------------------------------------------------------- inscrição estadual (ficha)
+  const CCC_URL = "https://dfe-portal.svrs.rs.gov.br/NFE/CCC";
+  function desenharIE(d, estado, msg) {
+    const box = $("r-ie");
+    if (estado === "carregando") {
+      box.replaceChildren(el("p", { class: "ie-status loading" }, "Consultando inscrição estadual…"));
+      return;
+    }
+    if (estado === "erro") {
+      const tentar = el("button", { type: "button", class: "btn-small" }, "Tentar novamente");
+      tentar.addEventListener("click", () => carregarIE(d));
+      box.replaceChildren(el("p", { class: "ie-status erro" }, msg || "Não foi possível consultar a inscrição estadual agora."), tentar);
+      return;
+    }
+    const ies = d.ies || [];
+    const rodape = el("p", { class: "ie-fonte" }, "Fonte: SINTEGRA/CCC via CNPJ.ws",
+      ies[0] && ies[0].atualizado ? ` · atualizado em ${data(ies[0].atualizado)}` : "", " · ",
+      el("a", { href: CCC_URL, target: "_blank", rel: "noopener" }, "Ver tipo e regime no CCC (SEFAZ)"));
+    if (!ies.length) {
+      box.replaceChildren(el("p", { class: "ie-status" }, "Nenhuma inscrição estadual encontrada. A empresa pode ser isenta ou não contribuinte de ICMS (por exemplo, só presta serviços)."), rodape);
+      return;
+    }
+    const lista = el("ul", { class: "ie-lista" });
+    for (const i of ies) {
+      const copiarBtn = el("button", { type: "button", class: "link-btn" }, "Copiar");
+      copiarBtn.addEventListener("click", () => copiar(i.ie, "Inscrição estadual"));
+      lista.append(el("li", {},
+        el("span", { class: "ie-uf" }, i.uf || "—"),
+        el("span", { class: "ie-num mono" }, i.ie),
+        el("span", { class: "chip " + (i.ativo === true ? "ok" : i.ativo === false ? "bad" : "") }, situacaoIE(i)),
+        copiarBtn));
+    }
+    box.replaceChildren(lista, rodape);
+  }
+
+  async function carregarIE(d) {
+    if (Array.isArray(d.ies)) { desenharIE(d); return; } // já veio do CNPJ.ws
+    desenharIE(d, "carregando");
+    try {
+      const ies = await buscarIE(d.cnpj);
+      d.ies = ies;
+      if (atual && atual.cnpj === d.cnpj) desenharIE(d);
+    } catch (e) {
+      if (atual && atual.cnpj === d.cnpj) desenharIE(d, "erro", e.definitivo
+        ? "Inscrição estadual não encontrada na fonte consultada."
+        : `${e.message} A inscrição estadual vem de uma fonte com limite de 3 consultas por minuto.`);
+    }
+  }
+
   // ---------------------------------------------------------------- status / toast
   function mostrarStatus(msg, tipo) { const s = $("status"); s.textContent = msg; s.className = `status ${tipo || ""}`; s.hidden = false; }
   function esconderStatus() { $("status").hidden = true; }
@@ -353,6 +441,7 @@
       ["Logradouro", [d.end.tipoLogr, d.end.logradouro].filter(Boolean).join(" ")], ["Número", d.end.numero],
       ["Complemento", d.end.complemento], ["Bairro", d.end.bairro], ["Município", d.end.municipio], ["UF", d.end.uf], ["CEP", d.end.cep],
       ["Telefones", d.telefones.join(" / ")], ["E-mail", d.email],
+      ["Inscrição estadual", textoIEs(d.ies)],
       ["CNAE principal", `${d.cnaePrincipal.codigo} ${d.cnaePrincipal.descricao}`.trim()],
       ["CNAEs secundários", d.cnaesSec.map((c) => `${c.codigo} ${c.descricao}`).join(" | ")],
       ["Sócios", d.socios.map((s) => `${s.nome} (${s.qualificacao})`).join(" | ")],
@@ -407,6 +496,7 @@
         ${cel("CEP", e.cep)}${cel("Bairro", e.bairro)}
         ${cel("Município", e.municipio)}${cel("UF", e.uf)}
         ${cel("Telefone", d.telefones.join(" / "))}${cel("E-mail", d.email)}
+        ${Array.isArray(d.ies) ? cel("Inscrição estadual", textoIEs(d.ies), true) : ""}
         ${cel("Situação cadastral", d.situacao)}${cel("Data da situação", data(d.dataSituacao))}
         ${cel("Capital social", d.capital ? brl.format(d.capital) : "")}${cel("Simples / MEI", [d.simples ? "Simples: sim" : d.simples === false ? "Simples: não" : "", d.mei ? "MEI: sim" : d.mei === false ? "MEI: não" : ""].filter(Boolean).join(" · "))}
       </div>
@@ -486,13 +576,15 @@
     if (r.repetidos) partes.push(`${r.repetidos} repetido${r.repetidos > 1 ? "s" : ""} ignorado${r.repetidos > 1 ? "s" : ""}`);
     if (r.invalidos) partes.push(`${r.invalidos} com dígito inválido`);
     if (r.validos.length > LOTE_MAX) partes.push(`só os primeiros ${LOTE_MAX} serão consultados`);
-    const seg = Math.ceil(lote.fila.length * (LOTE_PAUSA_MS + 600) / 1000);
+    const porCnpj = $("lote-ie").checked ? CNPJWS_INTERVALO_MS : LOTE_PAUSA_MS + 600;
+    const seg = Math.ceil(lote.fila.length * porCnpj / 1000);
     if (lote.fila.length > 1) partes.push(`tempo estimado: ${seg < 60 ? seg + " s" : Math.ceil(seg / 60) + " min"}`);
     $("lote-resumo").textContent = r.validos.length || r.invalidos ? partes.join(" · ") : "Nenhum CNPJ identificado ainda.";
     $("lote-iniciar").disabled = lote.rodando || lote.fila.length === 0;
   }
 
   $("lote-texto").addEventListener("input", atualizarResumoEntrada);
+  $("lote-ie").addEventListener("change", atualizarResumoEntrada);
 
   $("lote-file").addEventListener("change", async (ev) => {
     const f = ev.target.files && ev.target.files[0];
@@ -525,7 +617,7 @@
   function linhaPendente(i, c) {
     const tr = el("tr", { class: "pendente", "data-i": String(i) },
       el("td", {}, String(i + 1)), el("td", { class: "mono" }, mascarar(c)), el("td", {}, "Na fila…"),
-      el("td", {}, ""), el("td", {}, ""), el("td", {}, ""), el("td", {}, ""));
+      el("td", {}, ""), el("td", {}, ""), el("td", {}, ""), el("td", {}, ""), el("td", { class: "col-ie" }, ""));
     return tr;
   }
   function preencherLinha(i) {
@@ -541,7 +633,9 @@
         el("td", {}, String(i + 1)), el("td", { class: "mono" }, mascarar(d.cnpj)), el("td", {}, d.razao),
         el("td", {}, sit), el("td", {}, [titulo(d.end.municipio), d.end.uf].filter(Boolean).join("/")),
         el("td", {}, [d.cnaePrincipal.codigo, d.cnaePrincipal.descricao].filter(Boolean).join(" ")),
-        el("td", {}, d.telefones[0] || ""));
+        el("td", {}, d.telefones[0] || ""),
+        el("td", { class: "col-ie mono" }, Array.isArray(d.ies) ? (d.ies.length ? d.ies.map((i) => `${i.uf} ${i.ie}`).join(", ") : "Nenhuma")
+          : r.ieErro ? el("span", { class: "erro" }, "Não consultada") : ""));
     } else {
       tr.className = "falha";
       tr.children[2].replaceChildren(el("span", { class: "erro" }, r.erro));
@@ -755,6 +849,9 @@
     lote.rodando = true; lote.pausado = false; lote.cancelado = false;
     lote.resultados = lote.fila.map((c) => ({ cnpj: c, dados: null, erro: null }));
     lote.filtro = null; $("lote-filtro").hidden = true;
+    lote.comIE = $("lote-ie").checked;
+    $("lote-ie").disabled = true;
+    document.querySelector(".lote-tabela").classList.toggle("com-ie", lote.comIE);
     $("lote-linhas").replaceChildren(...lote.fila.map((c, i) => linhaPendente(i, c)));
     $("lote-painel").hidden = false;
     $("lote-iniciar").disabled = true; $("lote-texto").disabled = true;
@@ -770,6 +867,11 @@
           r.dados = await consultar(r.cnpj);
           r.dados.consultadoEm = new Date();
           r.erro = null;
+          if (lote.comIE && !Array.isArray(r.dados.ies)) {
+            $("lote-progresso-txt").textContent = `Consultando inscrição estadual de ${mascarar(r.cnpj)}…`;
+            try { r.dados.ies = await buscarIE(r.cnpj); r.ieErro = null; }
+            catch (e) { r.ieErro = e.message || "Falha na consulta da IE"; }
+          }
           break;
         } catch (e) {
           r.erro = e.message || "Erro na consulta";
@@ -786,6 +888,7 @@
 
     lote.rodando = false;
     $("lote-texto").disabled = false;
+    $("lote-ie").disabled = false;
     $("lote-pausar").hidden = true; $("lote-cancelar").hidden = true;
     atualizarResumoEntrada();
     atualizarProgresso();
@@ -823,7 +926,7 @@
   function modeloVazio() {
     return { cnpj: "", razao: "", fantasia: "", situacao: "", dataSituacao: "", motivoSituacao: "", tipo: "", abertura: "", natureza: "", porte: "",
       capital: null, simples: null, mei: null, end: { tipoLogr: "", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "" },
-      telefones: [], email: "", cnaePrincipal: { codigo: "", descricao: "" }, cnaesSec: [], socios: [], fonte: "" };
+      telefones: [], email: "", cnaePrincipal: { codigo: "", descricao: "" }, cnaesSec: [], socios: [], ies: null, fonte: "" };
   }
   const carimbo = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
 

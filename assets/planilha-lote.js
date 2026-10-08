@@ -79,6 +79,7 @@
     ["Simples Nacional", 10], ["MEI", 7], ["Logradouro", 32], ["Número", 9], ["Complemento", 18], ["Bairro", 20],
     ["Município", 20], ["UF", 6], ["Cidade/UF", 22], ["CEP", 11], ["Telefones", 22], ["E-mail", 28],
     ["CNAE principal", 12], ["Atividade principal", 48], ["Qtd. CNAEs secundários", 11], ["Qtd. sócios", 9], ["Consultado em", 17],
+    ["Inscrição estadual", 30], ["Situação IE", 16],
   ];
   const L = {}; // letra de cada coluna pelo nome
   COLS.forEach(([nome], i) => { L[nome] = colunaLetra(i + 1); });
@@ -119,6 +120,8 @@
         d.cnaePrincipal.codigo, d.cnaePrincipal.descricao || "Sem atividade",
         d.cnaesSec.length, d.socios.length,
         d.consultadoEm ? d.consultadoEm.toLocaleString("pt-BR") : "",
+        Array.isArray(d.ies) ? (d.ies.length ? d.ies.map((x) => `${x.uf} ${x.ie}`).join(" | ") : "Nenhuma") : r.ieErro ? "Não consultada" : "",
+        Array.isArray(d.ies) && d.ies.length ? (d.ies[0].ativo === true ? "Habilitada" : d.ies[0].ativo === false ? "Não habilitada" : "") : "",
       ]);
     });
 
@@ -146,6 +149,11 @@
         regra(`OR(${ref}="Suspensa",${ref}="Inapta")`, COR.warn, COR.warnBg),
         regra(`OR(${ref}="Baixada",${ref}="Nula")`, COR.bad, COR.badBg),
         regra(`${ref}=${q(u.NAO_ENCONTRADO)}`, COR.neutro, COR.neutroBg),
+      ] });
+      const sie = `$${L["Situação IE"]}2`;
+      ws.addConditionalFormatting({ ref: `${L["Situação IE"]}2:${L["Situação IE"]}${ultima}`, rules: [
+        regra(`${sie}="Habilitada"`, COR.ok, COR.okBg),
+        regra(`${sie}="Não habilitada"`, COR.bad, COR.badBg),
       ] });
       ws.addConditionalFormatting({ ref: `${L["Status da consulta"]}2:${L["Status da consulta"]}${ultima}`, rules: [
         { type: "expression", formulae: [`$${L["Status da consulta"]}2<>"OK"`], style: { font: { color: { argb: COR.bad }, bold: true } } },
