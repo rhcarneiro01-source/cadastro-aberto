@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="assets/styles.css?v=5">
+  <link rel="stylesheet" href="assets/styles.css?v=6">
 </head>
 <body>
   <header class="topbar">
@@ -128,6 +128,8 @@
         <section class="panel" aria-labelledby="h-cad">
           <h3 id="h-cad">Dados cadastrais</h3>
           <dl id="r-cadastro" class="facts"></dl>
+          <h4 id="h-ie">Inscrição estadual (IE)</h4>
+          <div id="r-ie" class="ie" aria-live="polite" aria-labelledby="h-ie"></div>
         </section>
 
         <section class="panel" aria-labelledby="h-end">
@@ -183,6 +185,10 @@
             <input type="file" id="lote-file" accept=".xlsx,.xls,.csv,.txt" class="sr-only">
             <span id="lote-file-nome" class="muted"></span>
           </div>
+          <label class="lote-opcao">
+            <input type="checkbox" id="lote-ie">
+            <span><b>Incluir inscrição estadual (IE)</b><small>A fonte da IE aceita só 3 consultas por minuto, então o lote fica bem mais lento (cerca de 20 s por CNPJ).</small></span>
+          </label>
           <p id="lote-resumo" class="hint">Nenhum CNPJ identificado ainda.</p>
           <div class="lote-botoes">
             <button type="button" id="lote-iniciar" class="btn-primary" disabled><svg class="i" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Consultar lista</button>
@@ -215,7 +221,7 @@
         <div id="lote-filtro" class="lote-filtro" hidden></div>
         <div class="table-wrap">
           <table class="qsa lote-tabela">
-            <thead><tr><th scope="col">#</th><th scope="col">CNPJ</th><th scope="col">Razão social</th><th scope="col">Situação</th><th scope="col">Cidade/UF</th><th scope="col">Atividade principal</th><th scope="col">Telefone</th></tr></thead>
+            <thead><tr><th scope="col">#</th><th scope="col">CNPJ</th><th scope="col">Razão social</th><th scope="col">Situação</th><th scope="col">Cidade/UF</th><th scope="col">Atividade principal</th><th scope="col">Telefone</th><th scope="col" class="col-ie">Inscrição estadual</th></tr></thead>
             <tbody id="lote-linhas"></tbody>
           </table>
         </div>
@@ -235,7 +241,7 @@
   <section id="print-card" class="print-card" aria-hidden="true"></section>
 
   <script src="assets/vendor/xlsx.full.min.js" defer></script>
-  <script src="assets/planilha-lote.js?v=5" defer></script>
-  <script src="assets/app.js?v=5" defer></script>
+  <script src="assets/planilha-lote.js?v=6" defer></script>
+  <script src="assets/app.js?v=6" defer></script>
 </body>
 </html>

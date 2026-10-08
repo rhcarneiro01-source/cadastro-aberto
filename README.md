@@ -13,6 +13,7 @@ Digite ou cole um CNPJ e veja:
 - **Dados cadastrais:** razão social, nome fantasia, situação (com cor: ativa, suspensa/inapta, baixada), matriz ou filial, data de abertura e idade da empresa, natureza jurídica, porte, capital social, Simples e MEI.
 - **Endereço com mapa:** botões para abrir no Google Maps, traçar rota até o endereço e copiar o endereço.
 - **Contato:** telefones e e-mail.
+- **Inscrição estadual (IE):** número da IE em cada UF e se está habilitada, com botão para copiar e link para o CCC da SEFAZ (onde aparecem tipo de IE e regime). Vem do CNPJ.ws, que repassa dados do SINTEGRA/CCC e aceita 3 consultas por minuto; por isso a IE carrega logo depois do restante da ficha. Na consulta em lote, a IE é opcional (cerca de 20 s por CNPJ) e entra na tabela e no Excel.
 - **Atividades (CNAE):** a principal e todas as secundárias, com o código formatado.
 - **Quadro de sócios e administradores (QSA):** nome, qualificação, data de entrada e faixa etária.
 - **Exportação:** Excel com 3 abas (Empresa, CNAEs e Sócios), CSV no padrão do Excel brasileiro (separador `;` e acentos corretos), cartão A4 para imprimir ou salvar em PDF e JSON copiado.
